@@ -19,9 +19,9 @@ import random
 
 def circle_trajectory(r, t): 
     x = r * np.cos(t)
-    dx = -r * np.sin(t)
+    dx = -1.2 * np.sin(t)
     y = r * np.sin(t)
-    dy= r * np.cos(t)
+    dy= 1.2 * np.cos(t)
     return x, dx, y, dy
 
 def formation(d): 
@@ -128,19 +128,15 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         loop_freq = 25  # Hz
         rate = rospy.Rate(loop_freq)
         crossed = False
-        r = 10
-        count = 1
-        wn = 0.1
-        theta = 0
-        kp = 1.5
+
         height = 2
         rate2 = rospy.Rate(2)
         # for ardupilot takeoff command is required for flying
         last_req = rospy.Time.now()
 
         x10 = np.array([[0.0], [0.0]])
-        x20 = np.array([[0.0], [0.0]])
-        x30 = np.array([[-1.0], [-2.0]])
+        x20 = np.array([[0], [0 ]])
+        x30 = np.array([[0], [0]])
 
         x2 = np.zeros((2, 1))
         x3 = np.zeros((2,1))
@@ -160,10 +156,10 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
             print("sending takeoff command")
 
         bool_start = False
-        eps = 0.5
+        eps = 2
         
         while not(bool_start):
-            self.att.pose.position.y = x10[1,0] 
+            self.att.pose.position.y = x10[1,0]
             self.att.pose.position.x = x10[0,0]
             self.att.pose.position.z = height
             self.att_setpoint_pub.publish(self.att)
@@ -172,7 +168,8 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
             self.x1[1, 0] = self.gps.pose.position.y
             x2[0, 0] = self.fpv_2_loc.pose.position.x
             x2[1, 0] = self.fpv_2_loc.pose.position.y
-            if np.abs(self.att.pose.position.x - x10[1,0]) < eps and np.abs(self.fpv_2_loc.pose.position.x - x20[1,0]) < eps:#and norm(x3 - x30) :
+            if np.abs(self.att.pose.position.x - x10[0,0]) < eps and np.abs(self.fpv_2_loc.pose.position.x - x20[1,0]) < eps :
+                #and norm(x3 - x30) :
                 bool_start = True
                 t0_wait = time.time()
                 while time.time() - t0_wait < 2.:
@@ -184,27 +181,36 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
                 rate.sleep()
             except rospy.ROSException as e:
                 self.fail(e)
-        
+        time.sleep(2)
         t0 = time.time()  # mission time
         t = time.time() - t0
+
         tlast = t0
-        theta = 0 
-        
-        while 0 <= theta <=(8 * np.pi):
+        r = 6
+        count = 1
+        wn = 0.5
+        theta = 0.0
+        kp = 0.2
+        while 0.0 <= theta <= 8 * np.pi:
             t = time.time() - t0 
-            x,dx,y,dy = circle_trajectory(r, t)
             count += 1
-            wn += 0.001
-            theta = wn * count * 0.01
-            self.att.pose.position.x = r * np.cos(theta)
-            self.att.pose.position.y = r * np.sin(theta)
-            self.att.pose.position.z = 2.5
-            self.att_setpoint_pub.publish(self.att)
+            theta = wn * count * 0.01 + np.pi
+            x,dx,y,dy = circle_trajectory(r, theta)
+            # self.att.pose.position.x = x
+            # self.att.pose.position.y = y
+            # self.att_setpoint_pub.publish(self.att)
+            self.x1[0, 0] = self.gps.pose.position.x
+            self.x1[1, 0] = self.gps.pose.position.y
+            self.vel.twist.linear.x = -kp * (self.x1[0,0] - x)+ dx
+            self.vel.twist.linear.y = -kp * (self.x1[1,0] - y)+ dy
+            self.vel.twist.linear.z = 0
+            print(self.vel.twist.linear.x, self.vel.twist.linear.y)
+            self.att_velocity_pub.publish(self.vel)
+            tlast = t
             try:
                 rate.sleep()
             except rospy.ROSException as e:
                 self.fail(e)
-            tlast = t
         self.set_mode("LAND", 5)
         self.wait_for_landed_state(mavutil.mavlink.MAV_LANDED_STATE_ON_GROUND, 90, 0)
         self.set_arm(False, 5)
