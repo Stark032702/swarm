@@ -54,30 +54,25 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         super().__init__('drone1')
         self.att = PoseStamped()  # for position
         self.vel = TwistStamped()  # for velocity
-        self.true_vel = TwistStamped()
         self.gps = PoseStamped()  # gps coordinates
         self.fpv_2_loc = PoseStamped()
-        self.fpv_2_vel = TwistStamped()
         self.fpv_3_loc = PoseStamped()
-        self.fpv_3_vel = TwistStamped()
-
-        self.att_setpoint_pub = rospy.Publisher('/drone1/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-        self.att_velocity_pub = rospy.Publisher('/drone1/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
-        self.takeoff_command = rospy.ServiceProxy("/drone1/mavros/cmd/takeoff", CommandTOL)
-        self.arming = rospy.ServiceProxy("/drone1/mavros/cmd/arming", CommandBool)
-        self.set_mode_client = rospy.ServiceProxy("/drone1/mavros/set_mode", SetMode)
+        self.global_gps = PoseStamped()
+        self.att_setpoint_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+        self.att_velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
+        self.takeoff_command = rospy.ServiceProxy("/mavros/cmd/takeoff", CommandTOL)
+        self.arming = rospy.ServiceProxy("/mavros/cmd/arming", CommandBool)
+        self.set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
 
         def state_cb(msg):
             global current_state
             current_state = msg
 
-        self.state_sub = rospy.Subscriber("/drone1/mavros/state", State, callback=state_cb)
-        self.gps_sub = rospy.Subscriber('/drone1/mavros/local_position/pose', PoseStamped, self.update_gps)
-        self.gps_vel_sub = rospy.Subscriber('/drone1/mavros/local_position/velocity', TwistStamped, self.update_vel)
-        self.fpv_2_loc_sub =rospy.Subscriber('/drone2/mavros/local_position/pose', PoseStamped, self.update_fpv_2)
-        self.fpv_2_vel_sub = rospy.Subscriber('/drone2/mavros/local_position/velocity', TwistStamped, self.update_vel_fpv2)
-        self.fpv_3_loc_sub = rospy.Subscriber('/drone3/mavros/local_position/pose', PoseStamped, self.update_fpv_3)
-        self.fpv_3_vel_sub = rospy.Subscriber('/drone3/mavros/local_position/velocity', TwistStamped, self.update_vel_fpv3)
+        self.state_sub = rospy.Subscriber("/mavros/state", State, callback=state_cb)
+        self.gps_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_gps)
+        
+        self.fpv_2_loc_sub =rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_fpv_2)
+        self.fpv_3_loc_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_fpv_3)
 
         """
         Subscribe to the positions of other drones 
@@ -86,14 +81,7 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         self.x1 = np.zeros((2, 1))
         self.wait_for_landed_state(mavutil.mavlink.MAV_LANDED_STATE_ON_GROUND, 10, -1)
 
-        self.x1_hat = Interval2Vector([self.x1[0,0],self.x1[0,0]],[self.x1[1,0],self.x1[1,0]] )
-        self.x2_hat = Interval2Vector([0,0], [0,0])
-        self.x3_hat = Interval2Vector([0,0], [0,0])
-        
-        self.v1_hat = Interval2Vector([0,0], [0,0])
-        self.v2_hat = Interval2Vector([0,0], [0,0])
-        self.v3_hat = Interval2Vector([0,0], [0,0])
-        
+        time.sleep(4)
 
     def state_cb(msg):
         global current_state
@@ -112,14 +100,8 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         self.gps = data
         # print(data)
     
-    def update_vel(self, data):
-        self.true_vel = data
-    
-    def update_vel_fpv2(self, data): 
-        self.fpv_2_vel = data 
-    
-    def update_vel_fpv3(self, data): 
-        self.fpv_3_vel = data 
+    def update_global_gps(self, data): 
+        self.global_gps = data 
 
     def tearDown(self):
         super(MavrosOffboardAttctlTest1, self).tearDown()
@@ -132,36 +114,12 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
             self.att.header.stamp = rospy.Time.now()
             self.att_setpoint_pub.publish(self.att)
             self.att_velocity_pub.publish(self.vel)
-            rospy.Subscriber('/drone1/mavros/local_position/pose', PoseStamped, self.update_gps)  # update the gps cord
+            rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_gps)  # update the gps cord
 
             try:  # prevent garbage in console output when thread is killed
                 rate.sleep()
             except rospy.ROSInterruptException:
                 pass
-    
-    def inflate(self, t, tlast,rate, drone, flag): 
-        
-        if (t-tlast) < 1/rate or flag: 
-            if drone == 1: 
-                self.x1_hat = self.x1_hat + self.v1_hat * (t-tlast)
-                self.x1_hat.inflate(0.05)
-            elif drone == 2: 
-                self.x2_hat = self.x2_hat + self.v2_hat * (t-tlast)
-                self.x2_hat.inflate(0.05)
-            elif drone == 3: 
-                self.x3_hat = self.x3_hat + self.v3_hat * (t-tlast)
-                self.x3_hat.inflate(0.05)
-        else: 
-            if drone == 1: 
-                self.x1_hat = Interval2Vector([self.gps.pose.position.x,self.gps.pose.position.x], [self.gps.pose.position.y,self.gps.pose.position.y])
-                self.v1_hat = Interval2Vector([self.true_vel.twist.linear.x,self.true_vel.twist.linear.x], [self.true_vel.twist.linear.y,self.true_vel.twist.linear.y])
-            elif drone == 2: 
-                self.x2_hat = Interval2Vector([self.fpv_2_loc.pose.position.x, self.fpv_2_loc.pose.position.x], [self.fpv_2_loc.pose.position.y ,self.fpv_2_loc.pose.position.y])
-                self.v2_hat = Interval2Vector([self.fpv_2_vel.twist.linear.x, self.fpv_2_vel.twist.linear.x], [self.fpv_2_vel.twist.linear.y, self.fpv_2_vel.twist.linear.y])
-            elif drone == 3: 
-                self.x3_hat = Interval2Vector([self.fpv_3_loc.pose.position.x, self.fpv_3_loc.pose.position.x], [self.fpv_3_loc.pose.position.y,self.fpv_3_loc.pose.position.y])
-                self.v3_hat = Interval2Vector([self.fpv_3_vel.twist.linear.x, self.fpv_3_vel.twist.linear.x ], [self.fpv_3_vel.twist.linear.y, self.fpv_3_vel.twist.linear.y])
-
 
     def run(self, d): 
         rospy.loginfo("Run mission")
@@ -169,7 +127,6 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         timeout = 10  # (int) seconds
         loop_freq = 25  # Hz
         rate = rospy.Rate(loop_freq)
-        location_rate = 10 #frequency at which location can be reasonably 
         crossed = False
 
         height = 2
@@ -184,23 +141,21 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         x2 = np.zeros((2, 1))
         x3 = np.zeros((2,1))
         
-        self.set_mode("GUIDED", 5)
+        
         time.sleep(5)
-        self.arming.call(True)
-        time.sleep(5)
+        while not self.state.armed:
+            print("Waiting to be armed")
+            time.sleep(4)
+
         while self.gps.pose.position.z <= height - 1:
             print(self.gps.pose.position.z)
-            if (rospy.Time.now() - last_req) > rospy.Duration(5.0):
-                self.arming.call(True)
-                last_req = rospy.Time.now()
-            rate2.sleep()
-            self.takeoff_command(0, 0, 0, 0, height)
+            print("take off to height:", height)
+            time.sleep(4)
 
-            print("sending takeoff command")
-
+        self.set_mode("GUIDED", 5)
+        time.sleep(5)
+        eps = 1
         bool_start = False
-        eps = 2
-        
         while not(bool_start):
             self.att.pose.position.y = x10[1,0]
             self.att.pose.position.x = x10[0,0]
@@ -228,35 +183,32 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         t0 = time.time()  # mission time
         t = time.time() - t0
 
-        tlast = 0
+        tlast = t0
         r = 6
         count = 1
         wn = 0.5
         theta = 0.0
         kp = 0.2
-        x,dx,y,dy = circle_trajectory(r, theta)
-        disconnected = False
         while 0.0 <= theta <= 8 * np.pi:
             t = time.time() - t0 
             count += 1
             theta = wn * count * 0.01 + np.pi
-            
-            self.inflate(t, tlast,location_rate, 1, disconnected)
-            self.inflate(t, tlast,location_rate, 2, disconnected)
-            self.inflate(t, tlast,location_rate, 3, disconnected)
-                
-            self.x1 = self.x1_hat.mid()
-            self.vel.twist.linear.x = -kp * (self.x1[0,0] - x)
-            self.vel.twist.linear.y = -kp * (self.x1[1,0] - y)
+            x,dx,y,dy = circle_trajectory(r, theta)
+            # self.att.pose.position.x = x
+            # self.att.pose.position.y = y
+            # self.att_setpoint_pub.publish(self.att)
+            self.x1[0, 0] = self.gps.pose.position.x
+            self.x1[1, 0] = self.gps.pose.position.y
+            self.vel.twist.linear.x = -kp * (self.x1[0,0] - x)+ dx
+            self.vel.twist.linear.y = -kp * (self.x1[1,0] - y)+ dy
             self.vel.twist.linear.z = 0
             print(self.vel.twist.linear.x, self.vel.twist.linear.y)
             self.att_velocity_pub.publish(self.vel)
-            
+            tlast = t
             try:
                 rate.sleep()
             except rospy.ROSException as e:
                 self.fail(e)
-            tlast = t
         self.set_mode("LAND", 5)
         self.wait_for_landed_state(mavutil.mavlink.MAV_LANDED_STATE_ON_GROUND, 90, 0)
         self.set_arm(False, 5)

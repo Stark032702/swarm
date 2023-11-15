@@ -81,42 +81,32 @@ class Interval:
     def inflate(self, number):
         return Interval(self.b_min - number, self.b_max + number)
 
-
-class IntervalVector:
-    def __init__(self, a, b=None):
-        if not(b==None):
-            self.interval1 = a
-            self.interval2 = b
-        elif np.shape(a)==(2,2) :
-            self.interval1 = Interval(a[0][0],a[0][1])
-            self.interval2 = Interval(a[1][0],a[1][1])
-
-
-    def __add__(self, other):
-        return IntervalVector(self.interval1 + other.interval1, self.interval2 + other.interval2)
+class Interval2Vector: 
+    def __init__(self, x, y): 
+        self.x = Interval(x[0], x[1]) 
+        self.y = Interval(y[0], y[1])
+    
+    def __add__(self, other): 
+        return Interval2Vector(self.x + other.x, self.y + other.y)
 
     def __mul__(self, other):
-        if isinstance(other, IntervalVector):
-            return IntervalVector(self.interval1 * other.interval1, self.interval2 * other.interval2)
+        if isinstance(other, Interval2Vector):
+            return Interval2Vector(self.x * other.x, self.y * other.y)
         elif isinstance(other, float):
-            return IntervalVector(self.interval1 * other, self.interval2 * other)
+            return Interval2Vector(self.x * other, self.y * other)
         else:
             raise ValueError("Unsupported multiplication operation")
 
     def inflate(self,eps):
-        return IntervalVector(self.interval1.inflate(eps),self.interval2.inflate(eps))
-
-    def mid(self):
-        return np.array([[(self.interval1.b_min+self.interval1.b_max)/2],[(self.interval2.b_min+self.interval2.b_max)/2]])
-
-    def max_diam(self):
-        l1 = self.interval1.b_max - self.interval1.b_min
-        l2 = self.interval2.b_max - self.interval2.b_min
-        return np.max([l1,l2])
-
-
-
-
+        return Interval2Vector(self.x.inflate(eps),self.y.inflate(eps))
+    
+    def mid(self): 
+        return np.array([[self.x.b_min + self.x.b_max], [self.y.b_min + self.y.b_max]]) * 0.5 
+    
+    def uncertainty(self): 
+        l1 = np.abs(self.x.b_max - self.x.b_min)
+        l2 = np.abs(self.y.b_max - self.y.b_min)
+        return np.max(np.array([l1, l2]))
 
 oo = float('inf')
 EMPTY_SET = Interval(float('nan'), float('nan'))
