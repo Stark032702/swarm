@@ -73,7 +73,7 @@ class MavrosOffboardAttctlTest2(MavrosHelper):
         self.gps_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_gps)
         
         self.fpv_1_loc_sub =rospy.Subscriber('/vrpn_client/FPV_1/pose', PoseStamped, self.update_fpv_1)
-        self.fpv_3_loc_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_fpv_3)
+        self.fpv_3_loc_sub = rospy.Subscriber('/vrpn_client/FPV_3/pose', PoseStamped, self.update_fpv_3)
 
         """
         Subscribe to the positions of other drones 

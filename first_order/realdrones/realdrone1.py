@@ -71,8 +71,8 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         self.state_sub = rospy.Subscriber("/mavros/state", State, callback=state_cb)
         self.gps_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_gps)
         
-        self.fpv_2_loc_sub =rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_fpv_2)
-        self.fpv_3_loc_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_fpv_3)
+        self.fpv_2_loc_sub =rospy.Subscriber('/vrpn_client/FPV_2/pose', PoseStamped, self.update_fpv_2)
+        self.fpv_3_loc_sub = rospy.Subscriber('/vrpn_client/FPV_3/pose', PoseStamped, self.update_fpv_3)
 
         """
         Subscribe to the positions of other drones 
@@ -199,8 +199,8 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
             # self.att_setpoint_pub.publish(self.att)
             self.x1[0, 0] = self.gps.pose.position.x
             self.x1[1, 0] = self.gps.pose.position.y
-            self.vel.twist.linear.x = -kp * (self.x1[0,0] - x)+ dx
-            self.vel.twist.linear.y = -kp * (self.x1[1,0] - y)+ dy
+            self.vel.twist.linear.x = -kp * (self.x1[0,0] - x) + dx
+            self.vel.twist.linear.y = -kp * (self.x1[1,0] - y) + dy
             self.vel.twist.linear.z = 0
             print(self.vel.twist.linear.x, self.vel.twist.linear.y)
             self.att_velocity_pub.publish(self.vel)
