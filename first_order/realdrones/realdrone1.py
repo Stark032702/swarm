@@ -69,10 +69,10 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
             current_state = msg
 
         self.state_sub = rospy.Subscriber("/mavros/state", State, callback=state_cb)
-        self.gps_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_gps)
+        self.gps_sub = rospy.Subscriber('/vrpn_client/FPV_2/pose', PoseStamped, self.update_gps)
         
-        self.fpv_2_loc_sub =rospy.Subscriber('/vrpn_client/FPV_2/pose', PoseStamped, self.update_fpv_2)
-        self.fpv_3_loc_sub = rospy.Subscriber('/vrpn_client/FPV_3/pose', PoseStamped, self.update_fpv_3)
+        self.fpv_2_loc_sub =rospy.Subscriber('/vrpn_client/FPV_3/pose', PoseStamped, self.update_fpv_2)
+        self.fpv_3_loc_sub = rospy.Subscriber('/vrpn_client/FPV_4/pose', PoseStamped, self.update_fpv_3)
 
         """
         Subscribe to the positions of other drones 
@@ -114,7 +114,7 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
             self.att.header.stamp = rospy.Time.now()
             self.att_setpoint_pub.publish(self.att)
             self.att_velocity_pub.publish(self.vel)
-            rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_gps)  # update the gps cord
+            rospy.Subscriber('/vrpn_client/FPV_2/pose', PoseStamped, self.update_gps)  # update the gps cord
 
             try:  # prevent garbage in console output when thread is killed
                 rate.sleep()
@@ -129,7 +129,7 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         rate = rospy.Rate(loop_freq)
         crossed = False
 
-        height = 2
+        height = 4
         rate2 = rospy.Rate(2)
         # for ardupilot takeoff command is required for flying
         last_req = rospy.Time.now()
@@ -184,7 +184,7 @@ class MavrosOffboardAttctlTest1(MavrosHelper):
         t = time.time() - t0
 
         tlast = t0
-        r = 6
+        r = 0.75
         count = 1
         wn = 0.5
         theta = 0.0

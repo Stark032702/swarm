@@ -70,10 +70,10 @@ class MavrosOffboardAttctlTest3(MavrosHelper):
             current_state = msg
 
         self.state_sub = rospy.Subscriber("/mavros/state", State, callback=state_cb)
-        self.gps_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.update_gps)
+        self.gps_sub = rospy.Subscriber('/vrpn_client/FPV_4/pose', PoseStamped, self.update_gps)
         
-        self.fpv_1_loc_sub =rospy.Subscriber('/vrpn_client/FPV_1/pose', PoseStamped, self.update_fpv_1)
-        self.fpv_2_loc_sub = rospy.Subscriber('/vrpn_client/FPV_2/pose', PoseStamped, self.update_fpv_3)
+        self.fpv_1_loc_sub =rospy.Subscriber('/vrpn_client/FPV_2/pose', PoseStamped, self.update_fpv_1)
+        self.fpv_2_loc_sub = rospy.Subscriber('/vrpn_client/FPV_3/pose', PoseStamped, self.update_fpv_3)
 
         """
         Subscribe to the positions of other drones 
@@ -139,8 +139,8 @@ class MavrosOffboardAttctlTest3(MavrosHelper):
         
 
         x10 = np.array([[0.0], [0.0]])
-        x20 = np.array([[0], [0 ]])
-        x30 = np.array([[0], [0]])
+        x20 = np.array([[0.5], [0 ]])
+        x30 = np.array([[0], [0.5]])
         
         x1 = np.zeros((2, 1))
         x3 = np.zeros((2,1))
@@ -201,7 +201,7 @@ class MavrosOffboardAttctlTest3(MavrosHelper):
             self.x3[1,0] = self.gps.pose.position.y
             theta2 = np.arctan2(x1[1, 0], x1[0,0])
             x,dx,y,dy = circle_trajectory(r, theta)
-            r1_star_x, r1_star_y, r2_star_x, r2_star_y, r3_star_x, r3_star_y = formation(3.5)
+            r1_star_x, r1_star_y, r2_star_x, r2_star_y, r3_star_x, r3_star_y = formation(0.5)
             #x_true = x1[0,0] + np.sign(x1[0,0]) * np.abs(2.5 * np.cos(theta))
             #y_true = x1[1,0] + np.sign(x1[1,0]) * np.abs(2.5 * np.sin(theta)) + 5
             x_true = x1[0,0] + (r1_star_x[1,0] * np.cos(theta2)) - r1_star_y[1,0] * np.sin(theta2)
